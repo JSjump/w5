@@ -71,7 +71,7 @@ contract FlashSwap is IUniswapV2Callee {
             uint amountRequired = UniswapV2Library.getAmountsIn(factory, amountToken, path)[0];
             assert(amountReceived > amountRequired); // fail if we didn't get enough amountReceived back to repay our flash loan
             // WETH.deposit{value: amountRequired}();
-            assert(address(token0).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
+            assert(address(token1).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
             // (bool success,) = sender.call{value: amountReceived - amountRequired}(new bytes(0)); // keep the rest! (ETH)
             // assert(success);
         } else {
@@ -97,7 +97,7 @@ contract FlashSwap is IUniswapV2Callee {
             uint amountRequired = UniswapV2Library.getAmountsIn(factory, amountETH, path)[0];
             assert(amountReceived > amountRequired); // fail if we didn't get enough tokens back to repay our flash loan
             // assert(token.transfer(msg.sender, amountRequired)); // return tokens to V2 pair
-            // assert(token.transfer(sender, amountReceived - amountRequired)); // keep the rest! (tokens)
+            assert(address(token0).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
         }
     }
 }
