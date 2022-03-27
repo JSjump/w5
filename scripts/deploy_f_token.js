@@ -16,7 +16,9 @@ async function main() {
 
   // We get the contract to deploy
   const FirstToken = await ethers.getContractFactory("FirstToken");
-  const firstToken = await FirstToken.deploy(ethers.utils.parseUnits("1", 18));
+  const firstToken = await FirstToken.deploy(
+    ethers.utils.parseUnits("10000", 18)
+  );
 
   await firstToken.deployed();
 
@@ -25,7 +27,7 @@ async function main() {
 
   const SecondToken = await ethers.getContractFactory("SecondToken");
   const secondToken = await SecondToken.deploy(
-    ethers.utils.parseUnits("1", 18)
+    ethers.utils.parseUnits("20000", 18)
   );
 
   await secondToken.deployed();
