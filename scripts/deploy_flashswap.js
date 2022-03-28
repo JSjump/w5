@@ -24,7 +24,7 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
   //   初始化provider
-  const provider = new ethers.providers.JsonRpcProvider(process.env.GRO_URL);
+  const provider = new ethers.providers.InfuraProvider(process.env.GRO_URL);
 
   const wallet = new ethers.Wallet(process.env.GRO_PRIVATE_KEY, provider);
 
