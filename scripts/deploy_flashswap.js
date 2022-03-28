@@ -9,11 +9,7 @@ require("dotenv").config();
 
 // The Contract interface
 const abi = [
-  "function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock",
-  // "event ValueChanged(address indexed author, string oldValue, string newValue)",
-  // "constructor(string value)",
-  // "function getValue() view returns (string value)",
-  // "function setValue(string value)"
+  "function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external",
 ];
 
 async function main() {
@@ -24,7 +20,7 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
   //   初始化provider
-  const provider = new ethers.providers.InfuraProvider(process.env.GRO_URL);
+  const provider = new ethers.providers.JsonRpcProvider(process.env.GRO_URL);
 
   const wallet = new ethers.Wallet(process.env.GRO_PRIVATE_KEY, provider);
 
@@ -46,9 +42,17 @@ async function main() {
     abi,
     wallet
   );
-  const bytes = ethers.encodeParameters(["uint256"], [0]);
-  const result = await pair.swap(10, 0, flashSwap.address, bytes);
-  console.log(result.logs);
+  const bytes = ethers.utils.defaultAbiCoder.encode(["uint256"], [0]);
+  const result = await pair.swap(
+    ethers.utils.parseUnits("10", 18),
+    0,
+    flashSwap.address,
+    bytes,
+    {
+      gasLimit: ethers.utils.parseUnits("5", 5),
+    }
+  );
+  console.log(result);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
