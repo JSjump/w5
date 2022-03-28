@@ -1,19 +1,18 @@
-
+//SPDX-License-Identifier: Unlicense
 pragma solidity =0.6.6;
 
-import "./interfaces/IUniswapV2Callee.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
 
-
-import "./libraries/UniswapV2Library.sol";
-// import "./interfaces/V1/IUniswapV1Factory.sol";
+import "@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/V1/IUniswapV1Factory.sol";
 // import "./interfaces/V1/IUniswapV1Exchange.sol";
 
 
 import "./ISwapRouter.sol";
 
-import "./interfaces/IUniswapV2Router01.sol";
-import "./interfaces/IERC20.sol";
-import "./interfaces/IWETH.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IERC20.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 
 contract FlashSwap is IUniswapV2Callee {
     ISwapRouter immutable swapRouterV3;
@@ -21,7 +20,7 @@ contract FlashSwap is IUniswapV2Callee {
     IWETH immutable WETH;
 
     constructor(address _factory, address _routerV3, address router) public {
-        swapRouterV3 = IUniswapV1Factory(_routerV3);
+        swapRouterV3 = ISwapRouter(_routerV3);
         factory = _factory;
         WETH = IWETH(IUniswapV2Router01(router).WETH());
     }
@@ -52,14 +51,14 @@ contract FlashSwap is IUniswapV2Callee {
 
         if (amountToken > 0) {
             (uint minOut) = abi.decode(data, (uint)); // slippage parameter for V1, passed in by caller
-            token0.approve(address(swapRouterV3), amountToken);
+            IERC20(path[1]).approve(address(swapRouterV3), amountToken);
             // swap
             uint256 amountReceived = swapRouterV3.exactInputSingle(
              ISwapRouter.ExactInputSingleParams({
-                    tokenIn: token0,
-                    tokenOut: token1,
-                    fee: ((amountToken * 3)/997) + 1,
-                    recipient: msg.sender,
+                    tokenIn: path[1],
+                    tokenOut: path[0],
+                    fee: uint24(((amountToken * 3)/997) + 1),
+                    recipient: sender,
                     deadline: block.timestamp,
                     amountIn: amountToken,
                     amountOutMinimum: minOut,
@@ -71,19 +70,19 @@ contract FlashSwap is IUniswapV2Callee {
             uint amountRequired = UniswapV2Library.getAmountsIn(factory, amountToken, path)[0];
             assert(amountReceived > amountRequired); // fail if we didn't get enough amountReceived back to repay our flash loan
             // WETH.deposit{value: amountRequired}();
-            assert(address(token1).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
+            assert(IERC20(path[0]).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
             // (bool success,) = sender.call{value: amountReceived - amountRequired}(new bytes(0)); // keep the rest! (ETH)
             // assert(success);
         } else {
             (uint minOut) = abi.decode(data, (uint)); // slippage parameter for V1, passed in by caller
-            token1.approve(address(swapRouterV3), amountETH);
+            IERC20(path[0]).approve(address(swapRouterV3), amountETH);
             // swap
             uint256 amountReceived = swapRouterV3.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
-                    tokenIn: token1,
-                    tokenOut: token0,
-                    fee: ((amountToken * 3)/997) + 1,
-                    recipient: msg.sender,
+                    tokenIn: path[0],
+                    tokenOut: path[1],
+                    fee: uint24(((amountETH * 3)/997) + 1),
+                    recipient: sender,
                     deadline: block.timestamp,
                     amountIn: amountETH,
                     amountOutMinimum: minOut,
@@ -97,7 +96,7 @@ contract FlashSwap is IUniswapV2Callee {
             uint amountRequired = UniswapV2Library.getAmountsIn(factory, amountETH, path)[0];
             assert(amountReceived > amountRequired); // fail if we didn't get enough tokens back to repay our flash loan
             // assert(token.transfer(msg.sender, amountRequired)); // return tokens to V2 pair
-            assert(address(token0).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
+            assert(IERC20(path[1]).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
         }
     }
 }
