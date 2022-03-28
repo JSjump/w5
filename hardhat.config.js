@@ -93,6 +93,19 @@ module.exports = {
           ? [process.env.GRO_PRIVATE_KEY]
           : [],
     },
+    hardhat: {
+      // url: process.env.HARDHAT_URL,
+      // accounts:
+      //   process.env.HARDHAT_PK !== undefined ? [process.env.HARDHAT_PK] : [],
+      forking: {
+        url: "https://goerli.infura.io/v3/b50be745408f41f19731449156edf5ec",
+      },
+      // url: process.env.GRO_URL || "",
+      // accounts:
+      //   process.env.GRO_PRIVATE_KEY !== undefined
+      //     ? [process.env.GRO_PRIVATE_KEY]
+      //     : [],
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
