@@ -6,7 +6,9 @@ import "hardhat/console.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
 
 import "@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol";
-import "@uniswap/v2-periphery/contracts/interfaces/V1/IUniswapV1Factory.sol";
+// import "@uniswap/v2-periphery/contracts/interfaces/V1/IUniswapV1Factory.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+// import "@uniswap/v2-core/contracts/UniswapV2Pair.sol";
 
 
 import "./ISwapRouter.sol";
@@ -15,12 +17,16 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 
+
+
+
+
 contract FlashSwap is IUniswapV2Callee {
     ISwapRouter immutable swapRouterV3;
     address immutable factory;
     IWETH immutable WETH;
 
-    constructor(address _factory, address _routerV3, address router) public {
+    constructor(address _routerV3, address _factory, address router) public {
         swapRouterV3 = ISwapRouter(_routerV3);
         factory = _factory;
         WETH = IWETH(IUniswapV2Router01(router).WETH());
@@ -41,6 +47,9 @@ contract FlashSwap is IUniswapV2Callee {
         { // scope for token{0,1}, avoids stack too deep errors
         address token0 = IUniswapV2Pair(msg.sender).token0();
         address token1 = IUniswapV2Pair(msg.sender).token1();
+        console.log("token1token0",token0,token1);
+        console.log("token0token1",msg.sender,UniswapV2Library.pairFor(factory, token0, token1));
+
         assert(msg.sender == UniswapV2Library.pairFor(factory, token0, token1)); // ensure that msg.sender is actually a V2 pair
         assert(amount0 == 0 || amount1 == 0); // this strategy is unidirectional
         path[0] = amount0 == 0 ? token0 : token1;
@@ -54,31 +63,41 @@ contract FlashSwap is IUniswapV2Callee {
         // assert(path[0] == address(WETH) || path[1] == address(WETH)); // this strategy only works with a V2 WETH pair
         // IERC20 token = IERC20(path[0] == address(WETH) ? path[1] : path[0]);
         // IUniswapV1Exchange exchangeV1 = IUniswapV1Exchange(factoryV3.getExchange(address(token))); // get V1 exchange
-        console.log("IERC20(path[1])",IERC20(path[1]).balanceOf(sender));
+        console.log("IERC20(path[1])",IERC20(path[0]).balanceOf(sender));
 
         if (amountToken > 0) {
             (uint minOut) = abi.decode(data, (uint)); // slippage parameter for V1, passed in by caller
-            IERC20(path[1]).approve(address(swapRouterV3), amountToken);
+            console.log("minOut",minOut);
+            console.log("swapRouterV3",address(swapRouterV3));
+
+            bool isSuccess = IERC20(path[1]).approve(address(swapRouterV3), amountToken);
+            // console.log("approve",uint24(((amountToken * 3)/997) + 1));
+
             // swap
             uint256 amountReceived = swapRouterV3.exactInputSingle(
              ISwapRouter.ExactInputSingleParams({
                     tokenIn: path[1],
                     tokenOut: path[0],
-                    fee: uint24(((amountToken * 3)/997) + 1),
-                    recipient: sender,
-                    deadline: block.timestamp,
+                    fee: 3000,
+                    recipient: address(this),
+                    deadline: block.timestamp+300,
                     amountIn: amountToken,
                     amountOutMinimum: minOut,
                     sqrtPriceLimitX96: 0
                 })
             );
+            console.log("amountReceived",amountReceived);
             // uint amountReceived = exchangeV1.tokenToEthSwapInput(amountToken, minETH, uint(-1));
 
             uint amountRequired = UniswapV2Library.getAmountsIn(factory, amountToken, path)[0];
             console.log("amountRequired",amountRequired);
+            console.log("balance",IERC20(path[0]).balanceOf(address(this)));
             assert(amountReceived > amountRequired); // fail if we didn't get enough amountReceived back to repay our flash loan
+            console.log("balance",IERC20(path[0]).balanceOf(address(this)));
             // WETH.deposit{value: amountRequired}();
             assert(IERC20(path[0]).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
+            assert(IERC20(path[0]).transfer(sender,amountReceived - amountRequired));
+            console.log("balance",IERC20(path[0]).balanceOf(sender));
             // (bool success,) = sender.call{value: amountReceived - amountRequired}(new bytes(0)); // keep the rest! (ETH)
             // assert(success);
         } else {
@@ -89,9 +108,9 @@ contract FlashSwap is IUniswapV2Callee {
             ISwapRouter.ExactInputSingleParams({
                     tokenIn: path[0],
                     tokenOut: path[1],
-                    fee: uint24(((amountETH * 3)/997) + 1),
-                    recipient: sender,
-                    deadline: block.timestamp,
+                    fee: 3000,
+                    recipient: address(this),
+                    deadline: block.timestamp+300,
                     amountIn: amountETH,
                     amountOutMinimum: minOut,
                     sqrtPriceLimitX96: 0
@@ -105,6 +124,7 @@ contract FlashSwap is IUniswapV2Callee {
             assert(amountReceived > amountRequired); // fail if we didn't get enough tokens back to repay our flash loan
             // assert(token.transfer(msg.sender, amountRequired)); // return tokens to V2 pair
             assert(IERC20(path[1]).transfer(msg.sender, amountRequired)); // return WETH to V2 pair
+            assert(IERC20(path[1]).transfer(sender,amountReceived - amountRequired));
         }
     }
 }

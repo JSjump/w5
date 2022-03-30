@@ -24,3 +24,5 @@ uniswapV3 pair 合约的构建
 https://goerli.etherscan.io/tx/0x02ee41765ac7326e1deaf6785cfd3a4bc5bbfa192b740aac3f0c236f88d343d4
 ft-st  流动池为1:2  pair合约地址：0x3e28d27d544970113a09f97f3daa8e9c3275db62
 
+v2-v3套利成功交易链接
+https://goerli.etherscan.io/tx/0xd8c7813381697874d602af3b700b710cbbdfb7c36df78f07b288c797aa6f6c91

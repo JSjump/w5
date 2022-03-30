@@ -20,11 +20,9 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
   //   初始化provider
-  const provider = new ethers.providers.JsonRpcProvider(
-    process.env.HARDHAT_URL
-  );
+  const provider = new ethers.providers.JsonRpcProvider(process.env.GRO_URL);
 
-  const wallet = new ethers.Wallet(process.env.HARDHAT_PK, provider);
+  const wallet = new ethers.Wallet(process.env.GRO_PRIVATE_KEY, provider);
 
   // We get the contract to deploy
   const FlashSwap = await ethers.getContractFactory("FlashSwap");
@@ -44,11 +42,11 @@ async function main() {
     abi,
     wallet
   );
-  const bytes = ethers.utils.defaultAbiCoder.encode(["uint256"], [0]);
+  const bytes = ethers.utils.defaultAbiCoder.encode(["uint256"], [1]);
   const result = await pair.swap(10, 0, flashSwap.address, bytes, {
     gasLimit: ethers.utils.parseUnits("5", 5),
   });
-  //   console.log(result);
+  console.log(result);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
